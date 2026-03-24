@@ -1,0 +1,1186 @@
+     1                                  ORG 0x0100
+     2 00000000 E9F009                  jmp start
+     3                                  
+     4 00000003 0000<rept>              snake:      times 240 dw 0            ; stores the location in terms of row and columns for each character of the snake
+     5 000001E3 2A                      asterisk:   db '*'                    
+     6 000001E4 20                      space:      db ' '                    
+     7 000001E5 78                      head:       db 'x'                    
+     8 000001E6 00                      left:       db 0                      
+     9 000001E7 00                      right:      db 0                      
+    10 000001E8 00                      up:         db 0                      
+    11 000001E9 00                      down:       db 0                      
+    12 000001EA 0000                    fruit:      dw 0                      
+    13 000001EC 6F242A                  food:       db 'o', '$', '*'          
+    14 000001EF 3F                      poison:     db '?'                    
+    15 000001F0 0000000000000000        array:      dw 0, 0, 0, 0             
+    16 000001F8 0000                    foodindex:  dw 0                      
+    17 000001FA 1500                    size:       dw 21                     
+    18 000001FC 03                      lives:      db 3                      
+    19 000001FD 04                      random:     db 4                      
+    20 000001FE 3D                      boundary:   db '='                    
+    21 000001FF 00000000                oldkbisr:   dd 0                      
+    22 00000203 03                      livesRemaining: db 3                  
+    23 00000204 54696D652052656D61-     string:     db 'Time Remaining: '     
+    24 0000020D 696E696E673A20     
+    25 00000214 4C697665733A            str2:       db 'Lives:'               
+    26 0000021A 4E                      initialMins: db 78                    
+    27 0000021B 3B                      initialSecs: db 59                    
+    28 0000021C 03                      MinsRemaining: db 03                 
+    29 0000021D 0000                    timeOver:   dw 0                      
+    30 0000021F 00                      tickCount:  db 0                      
+    31 00000220 594F5520574F4E21        winner:     db 'YOU WON!'             
+    32 00000228 47414D45204F564552-     gameOver:   db 'GAME OVER!'           
+    33 00000231 21                 
+    34 00000232 53636F72653A            points:     db 'Score:'               
+    35 00000238 0000                    score:      dw 0                      
+    36 0000023A 00                      seconds:    db 0                      
+    37 0000023B 00                      tickCount2: db 0                      
+    38 0000023C 06                      speed:      db 6                      
+    39 0000023D 00                      flag:       db 0                       ; indicates no poison
+    40 0000023E 4C45545320504C4159-     welcome:    db 'LETS PLAY!!!!'      
+    41 00000247 21212121           
+    42                                  
+    43                                  displayPoison:
+    44 0000024B 51                          push cx
+    45 0000024C 52                          push dx
+    46 0000024D 56                          push si
+    47 0000024E 50                          push ax
+    48                                  
+    49 0000024F BB[0300]                    mov bx, snake
+    50 00000252 BE0000                      mov si, 0
+    51 00000255 8B84[F001]                  mov ax, [array + si]
+    52 00000259 8B0E[FA01]                  mov cx, [size]
+    53                                  
+    54                                  l13:
+    55 0000025D 3B07                        cmp ax, [bx]
+    56 0000025F 7511                        jne continue
+    57 00000261 81C60200                    add si, 2
+    58 00000265 8B84[F001]                  mov ax, [array + si]
+    59 00000269 BB[0300]                    mov bx, snake
+    60 0000026C 81FE0300                    cmp si, 3
+    61 00000270 7F17                        jg skipPoison
+    62                                  
+    63                                  continue:
+    64 00000272 81C30200                    add bx, 2
+    65 00000276 E2E5                        loop l13
+    66                                  
+    67 00000278 BA0100                      mov dx, 0x1
+    68 0000027B 52                          push dx
+    69 0000027C 50                          push ax
+    70 0000027D BB[EF01]                    mov bx, poison
+    71 00000280 53                          push bx
+    72 00000281 E8F905                      call print
+    73 00000284 C606[3D02]01                mov byte [flag], 1 ; indicates poison is there
+    74                                  
+    75                                  skipPoison:
+    76 00000289 58                          pop ax
+    77 0000028A 5E                          pop si
+    78 0000028B 5A                          pop dx
+    79 0000028C 59                          pop cx
+    80 0000028D C3                          ret
+    81                                  
+    82                                  setPoison:
+    83 0000028E 50                          push ax
+    84 0000028F 53                          push bx
+    85                                  
+    86 00000290 BB0000                      mov bx, 0
+    87 00000293 B404                        mov ah, 04
+    88 00000295 B007                        mov al, 07
+    89 00000297 8987[F001]                  mov [array + bx], ax
+    90                                  
+    91 0000029B B40A                        mov ah, 10
+    92 0000029D 81C30200                    add bx, 2
+    93 000002A1 8987[F001]                  mov [array + bx], ax
+    94                                  
+    95 000002A5 B411                        mov ah, 17
+    96 000002A7 B038                        mov al, 56
+    97 000002A9 81C30200                    add bx, 2
+    98 000002AD 8987[F001]                  mov [array + bx], ax
+    99                                  
+   100 000002B1 B414                        mov ah, 20
+   101 000002B3 B04B                        mov al, 75
+   102 000002B5 81C30200                    add bx, 2
+   103 000002B9 8987[F001]                  mov [array + bx], ax
+   104                                  
+   105 000002BD 5B                          pop bx
+   106 000002BE 58                          pop ax
+   107 000002BF C3                          ret
+   108                                  	
+   109                                  printNum:
+   110 000002C0 55                          push bp
+   111 000002C1 89E5                        mov bp, sp
+   112 000002C3 06                          push es
+   113 000002C4 50                          push ax
+   114 000002C5 53                          push bx
+   115 000002C6 51                          push cx
+   116 000002C7 52                          push dx
+   117 000002C8 57                          push di
+   118                                  
+   119 000002C9 B800B8                      mov ax, 0xb800
+   120 000002CC 8EC0                        mov es, ax             ; point es to video base
+   121 000002CE 8B4604                      mov ax, [bp + 4]       ; load number in ax
+   122 000002D1 BB0A00                      mov bx, 10             ; use base 10 for division
+   123 000002D4 B90000                      mov cx, 0              ; initialize count of digits
+   124                                  
+   125                                  nextdigit:
+   126 000002D7 BA0000                      mov dx, 0             ; zero upper half of dividend
+   127 000002DA F7F3                        div bx                ; divide by 10
+   128 000002DC 80C230                      add dl, 0x30          ; convert digit into ASCII value
+   129 000002DF 52                          push dx               ; save ASCII value on stack
+   130 000002E0 41                          inc cx                ; increment count of digits
+   131 000002E1 3D0000                      cmp ax, 0             ; is the quotient zero?
+   132 000002E4 75F1                        jnz nextdigit         ; if not, divide it again
+   133                                  
+   134 000002E6 BF200F                      mov di, 3872          ; starting position on screen
+   135                                  nextpos:
+   136 000002E9 5A                          pop dx                ; remove a digit from the stack
+   137 000002EA B607                        mov dh, 0x07          ; use normal attribute
+   138 000002EC 268915                      mov [es:di], dx       ; print character on screen
+   139 000002EF 81C70200                    add di, 2             ; move to next screen location
+   140 000002F3 E2F4                        loop nextpos          ; repeat for all digits on stack
+   141                                  
+   142 000002F5 5F                          pop di
+   143 000002F6 5A                          pop dx
+   144 000002F7 59                          pop cx
+   145 000002F8 5B                          pop bx
+   146 000002F9 58                          pop ax
+   147 000002FA 07                          pop es
+   148 000002FB 5D                          pop bp
+   149 000002FC C20200                      ret 2
+   150                                  	
+   151                                  timeDisplay:
+   152 000002FF 50                          push ax
+   153 00000300 06                          push es
+   154 00000301 57                          push di
+   155 00000302 53                          push bx
+   156 00000303 51                          push cx
+   157                                  
+   158 00000304 B800B8                      mov ax, 0xb800
+   159 00000307 8EC0                        mov es, ax            ; point es to video base
+   160 00000309 BF8E0F                      mov di, 3982          ; starting position on screen (use appropriate screen offset)
+   161                                  	
+   162                                  hours:
+   163 0000030C B000                        mov al, 0              ; remaining hour's always gonna be 0
+   164 0000030E 0430                        add al, 0x30           ; convert 0 to ASCII '0'
+   165 00000310 B407                        mov ah, 0x07           ; normal text attribute
+   166 00000312 268905                      mov word [es:di], ax   ; displaying higher digit of hour
+   167 00000315 81C70200                    add di, 2              ; move to next position on screen
+   168 00000319 268905                      mov word [es:di], ax   ; displaying lower digit of hour
+   169 0000031C 81C70200                    add di, 2              ; move to next position on screen
+   170 00000320 E86C00                      call colon             ; print colon (if needed, define the colon function)
+   171 00000323 81C70200                    add di, 2              ; move to next position for next time display
+   172                                  	
+   173                                  
+   174                                  mins:
+   175 00000327 2E8A16[1C02]                mov dl, [cs:MinsRemaining]  ; load remaining minutes
+   176 0000032C 80C230                      add dl, 0x30                ; convert to ASCII
+   177 0000032F B607                        mov dh, 0x07                ; normal text attribute
+   178 00000331 B000                        mov al, 0                   ; higher digit of minutes
+   179 00000333 0430                        add al, 0x30                ; convert 0 to ASCII '0'
+   180 00000335 B407                        mov ah, 0x07                ; normal text attribute
+   181 00000337 268905                      mov word [es:di], ax        ; displaying higher digit
+   182 0000033A 81C70200                    add di, 2                   ; move to next position on screen
+   183 0000033E 268915                      mov word [es:di], dx        ; displaying lower digit
+   184 00000341 81C70200                    add di, 2                   ; move to next position on screen
+   185 00000345 E84700                      call colon                  ; call colon to print ":"
+   186 00000348 81C70200                    add di, 2                   ; move to next position for next time display
+   187                                  	
+   188                                  secs:
+   189 0000034C 2E803E[1B02]00              cmp byte [cs:initialSecs], 0        ; check if initialSecs is 0
+   190 00000352 750B                        jne decrement                        ; if not 0, jump to decrement
+   191 00000354 2EC606[1B02]3C              mov byte [cs:initialSecs], 60        ; reset initialSecs to 60
+   192 0000035A 2EFE0E[1C02]                dec byte [cs:MinsRemaining]          ; decrement MinsRemaining by 1
+   193                                  	
+   194                                  decrement:
+   195 0000035F 2EFE0E[1B02]                dec byte [cs:initialSecs]         ; decrement initialSecs by 1
+   196 00000364 2E8A16[1B02]                mov dl, [cs:initialSecs]          ; load the updated initialSecs value into dl
+   197                                  	
+   198                                  noChange:
+   199 00000369 88D0                        mov al, dl                 ; copy remaining secs (in dl) to al
+   200 0000036B B400                        mov ah, 0                  ; clear ah
+   201 0000036D B20A                        mov dl, 10                 ; divisor (for base 10)
+   202 0000036F F6F2                        div dl                     ; divides remaining secs by 10
+   203 00000371 88C2                        mov dl, al                 ; dl contains quotient (higher digit)
+   204 00000373 B607                        mov dh, 0x07               ; normal text attribute
+   205 00000375 80C230                      add dl, 0x30               ; convert quotient to ASCII
+   206 00000378 268915                      mov [es:di], dx            ; display higher digit
+   207 0000037B 81C70200                    add di, 2                  ; move to next position on screen
+   208 0000037F 88E0                        mov al, ah                 ; al contains remainder (lower digit)
+   209 00000381 0430                        add al, 0x30               ; convert remainder to ASCII
+   210 00000383 B407                        mov ah, 0x07               ; normal text attribute
+   211 00000385 268905                      mov [es:di], ax            ; display lower digit
+   212 00000388 81C70200                    add di, 2                  ; move to next position on screen
+   213 0000038C E9BE00                      jmp endDisplay             ; jump to endDisplay (or continue logic)
+   214                                  	
+   215                                  colon:
+   216 0000038F 50                          push ax                  ; save ax to the stack
+   217 00000390 57                          push di                  ; save di to the stack
+   218 00000391 B03A                        mov al, ':'              ; load ASCII value of ':' into al
+   219 00000393 B407                        mov ah, 0x07             ; set text attribute to normal
+   220 00000395 268905                      mov word [es:di], ax     ; display ':' at the current screen position
+   221 00000398 81C70200                    add di, 2                ; move to the next position on screen
+   222 0000039C 5F                          pop di                   ; restore di from the stack
+   223 0000039D 58                          pop ax                   ; restore ax from the stack
+   224 0000039E C3                          ret                      ; return from function
+   225                                  	
+   226                                  victory:
+   227 0000039F E88005                      call clrscr               ; clear the screen (you'll need to define the clrscr function)
+   228 000003A2 B800B8                      mov ax, 0xb800            ; point to video memory (text mode)
+   229 000003A5 8EC0                        mov es, ax                ; store video memory base in es
+   230 000003A7 B90800                      mov cx, 8                 ; set counter for characters to print (e.g., "YOU WON!" has 8 characters)
+   231 000003AA BF2407                      mov di, 1828              ; starting position on screen (use the appropriate screen offset)
+   232 000003AD BB[2002]                    mov bx, winner            ; load the address of the 'YOU WON!' message into bx
+   233                                  
+   234                                  printWinner:
+   235 000003B0 8A07                        mov al, [bx]              ; load the next character from the winner string
+   236 000003B2 3C00                        cmp al, 0                 ; check if we've reached the null terminator
+   237 000003B4 740C                        je endVictory             ; if null terminator, jump to endVictory
+   238 000003B6 B407                        mov ah, 0x07              ; normal text attribute
+   239 000003B8 268905                      mov [es:di], ax           ; display character at current screen position
+   240 000003BB 81C70200                    add di, 2                 ; move to the next screen position
+   241 000003BF 43                          inc bx                    ; move to the next character in the winner string
+   242 000003C0 E2EE                        loop printWinner          ; repeat for all characters
+   243                                  
+   244                                  endVictory:
+   245 000003C2 C3                          ret         
+   246                                  	
+   247                                  msg:
+   248 000003C3 8A07                        mov al, [bx]             ; load the current character from the string (pointed by bx)
+   249 000003C5 B407                        mov ah, 0x07             ; set text attribute to normal
+   250 000003C7 268905                      mov word [es:di], ax     ; display character at current screen position
+   251 000003CA 81C30100                    add bx, 1                ; move to the next character in the string
+   252 000003CE 81C70200                    add di, 2                ; move to the next screen position
+   253 000003D2 E2EF                        loop msg                 ; loop until cx reaches zero (counter from loop instruction)
+   254                                      
+   255 000003D4 B8004C                      mov ax, 0x4c00           ; terminate the program
+   256 000003D7 CD21                        int 0x21                 ; DOS interrupt to exit
+   257                                  	
+   258                                  quit:
+   259 000003D9 50                          push ax                  ; save ax to the stack
+   260 000003DA 06                          push es                  ; save es to the stack
+   261 000003DB 51                          push cx                  ; save cx to the stack
+   262 000003DC 57                          push di                  ; save di to the stack
+   263 000003DD 53                          push bx                  ; save bx to the stack
+   264                                  
+   265 000003DE 2E813E[FA01]F000            cmp word [cs:size], 240  ; compare the size value with 240
+   266 000003E5 7509                        jne loser                ; if not equal, jump to loser (you'll need to define the loser label)
+   267 000003E7 E8B5FF                      call victory             ; if equal, call the victory function
+   268                                  
+   269 000003EA 5B                          pop bx                   ; restore bx from the stack
+   270 000003EB 5F                          pop di                   ; restore di from the stack
+   271 000003EC 59                          pop cx                   ; restore cx from the stack
+   272 000003ED 07                          pop es                   ; restore es from the stack
+   273 000003EE 58                          pop ax                   ; restore ax from the stack
+   274 000003EF C3                          ret                      ; return from the quit function
+   275                                  	
+   276                                  loser:
+   277 000003F0 803E[0302]00                cmp byte [livesRemaining], 0   ; compare livesRemaining with 0
+   278 000003F5 740A                        je over                        ; if livesRemaining is 0, jump to over (define over label)
+   279 000003F7 FE0E[0302]                  dec byte [livesRemaining]      ; decrement livesRemaining by 1
+   280 000003FB E83801                      call displayLives              ; call displayLives to show the remaining lives
+   281 000003FE E93A00                      jmp nextChance                 ; jump to nextChance (define nextChance label)
+   282                                  	
+   283                                  over:
+   284 00000401 E81E05                      call clrscr               ; clear the screen (you'll need to define clrscr function)
+   285 00000404 B800B8                      mov ax, 0xb800            ; point to video memory (text mode)
+   286 00000407 8EC0                        mov es, ax                ; store video memory base in es
+   287 00000409 B90A00                      mov cx, 10                ; set counter for characters to print (e.g., "GAME OVER!" has 10 characters)
+   288 0000040C BF2407                      mov di, 1828              ; starting position on screen (use the appropriate screen offset)
+   289 0000040F BB[2802]                    mov bx, gameOver          ; load the address of the "GAME OVER!" message into bx
+   290                                  
+   291                                  printGameOver:
+   292 00000412 8A07                        mov al, [bx]              ; load the current character from the gameOver string
+   293 00000414 3C00                        cmp al, 0                 ; check if we've reached the null terminator
+   294 00000416 740C                        je endGameOver            ; if null terminator, jump to endGameOver
+   295 00000418 B407                        mov ah, 0x07              ; normal text attribute
+   296 0000041A 268905                      mov [es:di], ax           ; display character at current screen position
+   297 0000041D 81C70200                    add di, 2                 ; move to the next screen position
+   298 00000421 43                          inc bx                    ; move to the next character in the string
+   299 00000422 E2EE                        loop printGameOver        ; repeat for all characters
+   300                                  
+   301                                  endGameOver:
+   302 00000424 C3                          ret                       ; return from the over function
+   303                                  	
+   304                                  msg2:
+   305 00000425 8A07                        mov al, [bx]             ; load the current character from the string (pointed by bx)
+   306 00000427 B407                        mov ah, 0x07             ; set text attribute to normal
+   307 00000429 268905                      mov word [es:di], ax     ; display character at current screen position
+   308 0000042C 81C30100                    add bx, 1                ; move to the next character in the string
+   309 00000430 81C70200                    add di, 2                ; move to the next screen position
+   310 00000434 E2EF                        loop msg2                ; loop until cx reaches zero (counter from loop instruction)
+   311                                  
+   312 00000436 B8004C                      mov ax, 0x4c00           ; terminate the program
+   313 00000439 CD21                        int 0x21                 ; DOS interrupt to exit
+   314                                  	
+   315                                  nextChance:
+   316 0000043B 2EC606[1C02]03              mov byte [cs:MinsRemaining], 3      ; set remaining minutes to 3
+   317 00000441 2EC606[1B02]3B              mov byte [cs:initialSecs], 59       ; set initial seconds to 59
+   318 00000447 5B                          pop bx                              ; restore bx from the stack
+   319 00000448 5F                          pop di                              ; restore di from the stack
+   320 00000449 59                          pop cx                              ; restore cx from the stack
+   321 0000044A 07                          pop es                              ; restore es from the stack
+   322 0000044B 58                          pop ax                              ; restore ax from the stack
+   323 0000044C C3                          ret                                 ; return from nextChance function
+   324                                  
+   325                                  endDisplay:
+   326 0000044D 59                          pop cx                              ; restore cx from the stack
+   327 0000044E 5B                          pop bx                              ; restore bx from the stack
+   328 0000044F 5F                          pop di                              ; restore di from the stack
+   329 00000450 07                          pop es                              ; restore es from the stack
+   330 00000451 58                          pop ax                              ; restore ax from the stack
+   331 00000452 C3                          ret                                 ; return from endDisplay function
+   332                                  	
+   333                                  timer:
+   334 00000453 50                          push ax                           ; save ax register
+   335 00000454 2EA1[3C02]                  mov ax, [cs:speed]                ; load speed value into ax
+   336 00000458 2E3906[1F02]                cmp [cs:tickCount], ax            ; compare tickCount with speed
+   337 0000045D 7503                        jne alreadySet                    ; if not equal, jump to alreadySet
+   338                                  
+   339 0000045F E80005                      call printing                     ; call printing function if tickCount < speed
+   340                                  
+   341                                  alreadySet:
+   342 00000462 2E803E[1F02]12              cmp byte [cs:tickCount], 18       ; compare tickCount with 18
+   343 00000468 7538                        jne endTimer                      ; if tickCount is not 18, jump to endTimer
+   344                                  
+   345 0000046A E8F504                      call printing                     ; call printing function to display something
+   346 0000046D 2EFE06[3A02]                inc byte [cs:seconds]             ; increment seconds by 1
+   347 00000472 2EC606[1F02]00              mov byte [cs:tickCount], 0        ; reset tickCount to 0
+   348 00000478 E884FE                      call timeDisplay                  ; call timeDisplay to update the displayed time
+   349                                  
+   350 0000047B 2E803E[1B02]00              cmp byte [cs:initialSecs], 0      ; check if initialSecs is 0
+   351 00000481 751F                        jne endTimer                      ; if initialSecs is not 0, jump to endTimer
+   352                                  
+   353 00000483 2E803E[1C02]00              cmp byte [cs:MinsRemaining], 0    ; check if MinsRemaining is 0
+   354 00000489 7503                        jne l9                            ; if MinsRemaining is not 0, jump to l9
+   355 0000048B E84BFF                      call quit                         ; call quit function if game is over
+   356                                  	
+   357                                  l9:
+   358 0000048E 2E803E[3A02]14              cmp byte [cs:seconds], 20         ; Check if 20 seconds have passed
+   359 00000494 750C                        jne endTimer                      ; If not, skip speed adjustment
+   360                                  
+   361 00000496 2EC606[3A02]00              mov byte [cs:seconds], 0          ; Reset seconds counter
+   362 0000049C 2E802E[3C02]02              sub byte [cs:speed], 2            ; Increase speed (decrease delay)
+   363                                  
+   364                                  endTimer:
+   365 000004A2 2EFE06[1F02]                inc byte [cs:tickCount]           ; Increment tick count
+   366 000004A7 B020                        mov al, 0x20                      ; Send End of Interrupt (EOI) signal
+   367 000004A9 E620                        out 0x20, al                      ; to PIC (Programmable Interrupt Controller)
+   368                                  
+   369 000004AB 58                          pop ax                            ; Restore ax register
+   370 000004AC CF                          iret                              ; Return from interrupt
+   371                                  	
+   372                                  border:
+   373 000004AD 50                          push ax                         ; Save registers
+   374 000004AE 06                          push es
+   375 000004AF 52                          push dx
+   376 000004B0 51                          push cx
+   377                                  
+   378 000004B1 BA0000                      mov dx, 0                       ; Start at top-left corner
+   379 000004B4 B94F00                      mov cx, 79                      ; Number of columns in a row
+   380 000004B7 B400                        mov ah, 0                       ; Clear upper part of AX
+   381 000004B9 B022                        mov al, 0x22                    ; Just a placeholder value (likely updated by boundary)
+   382                                  
+   383                                  firstRow:
+   384 000004BB 50                          push ax                         ; Save AX
+   385 000004BC 52                          push dx                         ; Save DX (cursor position)
+   386 000004BD 68[FE01]                    push boundary                   ; Push boundary character
+   387 000004C0 E8BA03                      call print                      ; Call the print subroutine
+   388 000004C3 FEC2                        inc dl                          ; Move to next column
+   389 000004C5 E2F4                        loop firstRow                   ; Loop through all columns of first row
+   390                                  
+   391 000004C7 FEC6                        inc dh                          ; Move to next row (dh = row number)
+   392 000004C9 B200                        mov dl, 0                       ; Start column at 0
+   393 000004CB B91500                      mov cx, 21                      ; Height of the field
+   394                                  
+   395                                  l6:
+   396 000004CE 50                          push ax                         ; Print left boundary
+   397 000004CF 52                          push dx
+   398 000004D0 68[FE01]                    push boundary
+   399 000004D3 E8A703                      call print
+   400                                  
+   401 000004D6 80C24E                      add dl, 78                      ; Move to right boundary
+   402 000004D9 50                          push ax
+   403 000004DA 52                          push dx
+   404 000004DB 68[FE01]                    push boundary
+   405 000004DE E89C03                      call print
+   406                                  
+   407 000004E1 FEC6                        inc dh                          ; Go to next row
+   408 000004E3 B200                        mov dl, 0                       ; Reset column to 0
+   409 000004E5 E2E7                        loop l6                         ; Repeat for each row
+   410                                  
+   411 000004E7 B94F00                      mov cx, 79                      ; Bottom boundary
+   412 000004EA B200                        mov dl, 0
+   413                                  	
+   414                                  ORG 0x0100
+   415                                  
+   416                                  lastRow:
+   417 000004EC 50                          push ax                    ; Save registers
+   418 000004ED 52                          push dx
+   419 000004EE 68[FE01]                    push boundary              ; Push border character
+   420 000004F1 E88903                      call print                 ; Print border character
+   421 000004F4 FEC2                        inc dl                     ; Move to next column
+   422 000004F6 E2F4                        loop lastRow              ; Loop for entire bottom row
+   423                                  
+   424 000004F8 B90600                      mov cx, 6                 ; Loop counter for printing "Lives:"
+   425 000004FB B800B8                      mov ax, 0xb800            ; Video memory segment
+   426 000004FE 8EC0                        mov es, ax
+   427 00000500 BB[1402]                    mov bx, str2              ; Pointer to "Lives:" string
+   428 00000503 BF000F                      mov di, 3840              ; Screen offset (row 24)
+   429                                  
+   430                                  dis:
+   431 00000506 8A07                        mov al, [bx]              ; Load character
+   432 00000508 B407                        mov ah, 0x7               ; Normal attribute
+   433 0000050A 268905                      mov word [es:di], ax      ; Write character to screen
+   434 0000050D 81C70200                    add di, 2                 ; Next video memory cell
+   435 00000511 43                          inc bx                    ; Next character
+   436 00000512 E2F2                        loop dis
+   437                                  
+   438 00000514 E81F00                      call displayLives         ; Call subroutine to display lives
+   439 00000517 E83500                      call displayScore         ; Call subroutine to display score
+   440                                  
+   441 0000051A BF700F                      mov di, 3952              ; Screen offset for "Time Remaining:"
+   442 0000051D BB[0402]                    mov bx, string            ; Pointer to the string
+   443 00000520 B90F00                      mov cx, 15                ; Length of "Time Remaining:"
+   444                                  	
+   445                                  time:
+   446 00000523 8A07                        mov al, [bx]            ; Load character from "Time Remaining:"
+   447 00000525 B407                        mov ah, 0x7             ; Normal attribute
+   448 00000527 268905                      mov word [es:di], ax    ; Write character to video memory
+   449 0000052A 81C70200                    add di, 2               ; Move to next video memory cell
+   450 0000052E 43                          inc bx                  ; Move to next character
+   451 0000052F E2F2                        loop time               ; Repeat for all 15 characters
+   452                                  
+   453                                  exitBorder:
+   454 00000531 59                          pop cx                 ; Restore registers
+   455 00000532 5A                          pop dx
+   456 00000533 07                          pop es
+   457 00000534 58                          pop ax
+   458 00000535 C3                          ret
+   459                                  	
+   460                                  displayLives:
+   461 00000536 57                          push di
+   462 00000537 50                          push ax
+   463 00000538 06                          push es
+   464 00000539 BF0C0F                      mov di, 3852           ; Screen location to display lives
+   465 0000053C B800B8                      mov ax, 0xb800
+   466 0000053F 8EC0                        mov es, ax
+   467 00000541 A0[0302]                    mov al, [livesRemaining]
+   468 00000544 0430                        add al, 0x30           ; Convert to ASCII
+   469 00000546 B404                        mov ah, 0x4            ; Red color attribute (you can change if needed)
+   470 00000548 268905                      mov word [es:di], ax   ; Write to video memory
+   471 0000054B 07                          pop es
+   472 0000054C 58                          pop ax
+   473 0000054D 5F                          pop di
+   474 0000054E C3                          ret
+   475                                  
+   476                                  displayScore:
+   477 0000054F 57                          push di
+   478 00000550 50                          push ax
+   479 00000551 06                          push es
+   480 00000552 53                          push bx
+   481 00000553 BB[3202]                    mov bx, points         ; Points label string
+   482 00000556 BF140F                      mov di, 3860           ; Screen position for "Score:"
+   483 00000559 B800B8                      mov ax, 0xb800
+   484 0000055C 8EC0                        mov es, ax
+   485 0000055E B90600                      mov cx, 6              ; "Score:" has 6 characters
+   486                                  
+   487                                  printScore:
+   488 00000561 8A07                        mov al, [bx]
+   489 00000563 B407                        mov ah, 0x7            ; Normal white attribute
+   490 00000565 268905                      mov word [es:di], ax
+   491 00000568 43                          inc bx
+   492 00000569 81C70200                    add di, 2
+   493 0000056D E2F2                        loop printScore
+   494                                  
+   495 0000056F FF36[3802]                  push word [score]      ; Push current score to be printed
+   496 00000573 E84AFD                      call printNum          ; Convert and display numeric score
+   497                                  
+   498 00000576 5B                          pop bx
+   499 00000577 07                          pop es
+   500 00000578 58                          pop ax
+   501 00000579 5F                          pop di
+   502 0000057A C3                          ret
+   503                                  
+   504                                  
+   505                                  printSnake:
+   506 0000057B 53                          push bx
+   507 0000057C 51                          push cx
+   508 0000057D 57                          push di
+   509 0000057E 52                          push dx
+   510                                  
+   511 0000057F B90500                      mov cx, 0x5
+   512 00000582 51                          push cx
+   513 00000583 FF36[0300]                  push word [snake]       ; Push position of the snake's head
+   514 00000587 BB[E501]                    mov bx, head
+   515 0000058A 53                          push bx
+   516 0000058B E8EF02                      call print              ; Print the head
+   517                                  
+   518 0000058E BF0200                      mov di, 2
+   519 00000591 8B0E[FA01]                  mov cx, [size]
+   520 00000595 81E90200                    sub cx, 2               ; Exclude head and the trailing space
+   521                                  
+   522                                  body:
+   523 00000599 BA1100                      mov dx, 0x11
+   524 0000059C 52                          push dx
+   525 0000059D FFB5[0300]                  push word [snake+di]    ; Push position of body segment
+   526 000005A1 BB[E301]                    mov bx, asterisk
+   527 000005A4 53                          push bx
+   528 000005A5 E8D502                      call print
+   529 000005A8 81C70200                    add di, 2
+   530 000005AC E2EB                        loop body
+   531                                  
+   532 000005AE BA0700                      mov dx, 0x7
+   533 000005B1 52                          push dx
+   534 000005B2 FFB5[0300]                  push word [snake+di]    ; Clear the last body part
+   535 000005B6 BB[E401]                    mov bx, space
+   536 000005B9 53                          push bx
+   537 000005BA E8C002                      call print
+   538                                  
+   539 000005BD 5A                          pop dx
+   540 000005BE 5F                          pop di
+   541 000005BF 59                          pop cx
+   542 000005C0 5B                          pop bx
+   543 000005C1 C3                          ret
+   544                                  
+   545                                  
+   546                                  sound:
+   547 000005C2 50                          push ax
+   548 000005C3 53                          push bx
+   549 000005C4 51                          push cx
+   550                                  
+   551 000005C5 B0B6                        mov al, 182          ; Set command byte for channel 2, mode 3 (square wave)
+   552 000005C7 E643                        out 43h, al
+   553                                  
+   554 000005C9 B8D011                      mov ax, 4560         ; Frequency divisor for the PIT
+   555 000005CC E642                        out 42h, al          ; Send low byte to channel 2
+   556 000005CE 88E0                        mov al, ah
+   557 000005D0 E642                        out 42h, al          ; Send high byte to channel 2
+   558                                  
+   559 000005D2 E461                        in al, 61h           ; Read current state of port 61h
+   560 000005D4 0C03                        or al, 00000011b     ; Set bits 0 and 1 to enable speaker
+   561 000005D6 E661                        out 61h, al
+   562                                  
+   563 000005D8 BB1900                      mov bx, 25           ; Delay (used later or externally)
+   564                                  
+   565 000005DB 59                          pop cx
+   566 000005DC 5B                          pop bx
+   567 000005DD 58                          pop ax
+   568 000005DE C3                          ret
+   569                                  
+   570                                  pause1:
+   571 000005DF B9FFFF                      mov cx, 65535
+   572                                  pause2:
+   573 000005E2 49                          dec cx
+   574 000005E3 75FD                        jne pause2
+   575 000005E5 4B                          dec bx
+   576 000005E6 75F7                        jne pause1
+   577                                  
+   578 000005E8 E461                        in al, 61h
+   579 000005EA 24FC                        and al, 11111100b     ; Turn off bits 0 and 1 — speaker off
+   580 000005EC E661                        out 61h, al
+   581                                  
+   582 000005EE 59                          pop cx
+   583 000005EF 5B                          pop bx
+   584 000005F0 58                          pop ax
+   585 000005F1 C3                          ret
+   586                                  
+   587                                  initialize:
+   588 000005F2 56                          push si
+   589 000005F3 51                          push cx
+   590 000005F4 50                          push ax
+   591                                  
+   592 000005F5 B80A0A                      mov ax, 0x0A0A         ; Initial position for snake head (row, column)
+   593 000005F8 BE0000                      mov si, 0
+   594 000005FB 8B0E[FA01]                  mov cx, [size]         ; Load snake size
+   595                                  	
+   596                                  set:
+   597 000005FF 8984[0300]                  mov [snake+si], ax     ; Store position at current index
+   598 00000603 FEC0                        inc al                 ; Move right (increment column)
+   599 00000605 81C60200                    add si, 2              ; Move to next word in the snake array
+   600 00000609 E2F4                        loop set               ; Repeat for all segments
+   601                                  
+   602 0000060B C606[E601]00                mov byte [left], 0
+   603 00000610 C606[E701]00                mov byte [right], 0
+   604 00000615 C606[E801]00                mov byte [up], 0
+   605 0000061A C606[E901]00                mov byte [down], 0
+   606                                  
+   607 0000061F 58                          pop ax
+   608 00000620 59                          pop cx
+   609 00000621 5E                          pop si
+   610 00000622 C3                          ret
+   611                                  
+   612                                  clrPoison:
+   613 00000623 50                          push ax
+   614 00000624 FFB7[F001]                  push word [array + bx] ; Push poison coordinates
+   615 00000628 68[E401]                    push space             ; Character to clear poison
+   616 0000062B E84F02                      call print             ; Print space at poison location
+   617 0000062E C3                          ret
+   618                                  
+   619                                  movement:
+   620 0000062F 56                          push si
+   621 00000630 51                          push cx
+   622 00000631 50                          push ax
+   623 00000632 57                          push di
+   624                                  
+   625                                  skip:
+   626 00000633 8B36[FA01]                  mov si, [size]     ; Get current size of the snake
+   627 00000637 D1E6                        shl si, 1          ; Multiply by 2 (word offset)
+   628 00000639 81EE0200                    sub si, 2          ; Move to last valid index
+   629 0000063D 8B0E[FA01]                  mov cx, [size]     ; Loop counter for body movement
+   630 00000641 49                          dec cx             ; One less than size (head remains)
+   631                                  	
+   632                                  l3:
+   633 00000642 8B84[0100]                  mov ax, [snake + si - 2] ; Load the previous snake body position
+   634 00000646 8984[0300]                  mov [snake + si], ax     ; Move it to the current body position
+   635 0000064A 81EE0200                    sub si, 2                ; Move to the previous segment in the array
+   636 0000064E E2F2                        loop l3                  ; Continue until all body segments are moved
+   637                                  
+   638 00000650 58                          pop ax
+   639 00000651 5F                          pop di
+   640 00000652 59                          pop cx
+   641 00000653 5E                          pop si
+   642 00000654 C3                          ret
+   643                                  
+   644                                  temp:
+   645 00000655 52                          push dx
+   646 00000656 51                          push cx
+   647 00000657 53                          push bx
+   648 00000658 50                          push ax
+   649                                  
+   650 00000659 E866FF                      call sound               ; Play sound effect (e.g., collision sound)
+   651 0000065C FE0E[0302]                  dec byte [livesRemaining] ; Decrement remaining lives
+   652                                  
+   653 00000660 BB[0300]                    mov bx, snake
+   654 00000663 8B0E[FA01]                  mov cx, [size]
+   655                                  
+   656                                  remove2:
+   657 00000667 B80700                      mov ax, 0x7
+   658 0000066A 50                          push ax
+   659 0000066B FF37                        push word [bx]           ; Print space at snake's body position
+   660 0000066D 81C30200                    add bx, 2                ; Move to the next snake body part
+   661 00000671 BA[E401]                    mov dx, space
+   662 00000674 52                          push dx
+   663 00000675 E80502                      call print
+   664 00000678 E2ED                        loop remove2
+   665                                  
+   666 0000067A C706[FA01]1500              mov word [size], 21      ; Reset size to initial value
+   667 00000680 E86FFF                      call initialize          ; Reinitialize snake and game state
+   668 00000683 E8B0FE                      call displayLives        ; Display updated lives
+   669                                  
+   670 00000686 803E[0302]00                cmp byte [livesRemaining], 0
+   671 0000068B 7503                        jne popTemp
+   672 0000068D E849FD                      call quit                ; If no lives left, end the game
+   673                                  
+   674                                  popTemp:
+   675 00000690 58                          pop ax
+   676 00000691 5B                          pop bx
+   677 00000692 59                          pop cx
+   678 00000693 5A                          pop dx
+   679 00000694 C3                          ret
+   680                                  
+   681                                  coordinates:
+   682 00000695 55                          push bp
+   683 00000696 89E5                        mov bp, sp             ; Set up stack frame
+   684 00000698 56                          push si
+   685 00000699 51                          push cx
+   686 0000069A 50                          push ax
+   687 0000069B 53                          push bx
+   688                                  
+   689 0000069C 8B4604                      mov ax, [bp + 4]       ; Load the new location of the snake's head (from the stack)
+   690                                      
+   691 0000069F 80FC00                      cmp ah, 00             ; Check if head touches the top border (row 0)
+   692 000006A2 747B                        je borderTouched
+   693                                  
+   694 000006A4 80FC16                      cmp ah, 22             ; Check if head touches the bottom border (row 22)
+   695 000006A7 7476                        je borderTouched
+   696                                  
+   697 000006A9 3C00                        cmp al, 00             ; Check if head touches the left border (column 0)
+   698 000006AB 7472                        je borderTouched
+   699                                  
+   700 000006AD 3C4E                        cmp al, 78             ; Check if head touches the right border (column 78)
+   701 000006AF 746E                        je borderTouched
+   702                                  
+   703 000006B1 BB[0300]                    mov bx, snake
+   704 000006B4 8B0E[FA01]                  mov cx, [size]         ; Load the size of the snake
+   705 000006B8 49                          dec cx                 ; Decrease size to skip the head for body checking
+   706                                  	
+   707                                  checkHead:
+   708 000006B9 3B07                        cmp ax, [bx]          ; Check if the snake's head touches itself
+   709 000006BB 7462                        je borderTouched      ; If yes, jump to borderTouched (game over or reset)
+   710                                      
+   711 000006BD 81C30200                    add bx, 2             ; Move to the next part of the snake's body
+   712 000006C1 E2F6                        loop checkHead        ; Continue checking the rest of the body
+   713                                      
+   714 000006C3 E869FF                      call movement         ; If no self-collision, continue with movement
+   715                                      
+   716 000006C6 8B4604                      mov ax, [bp + 4]      ; Load new head location (passed as a parameter)
+   717 000006C9 B90400                      mov cx, 4             ; Set up to check for poison locations
+   718 000006CC BB0000                      mov bx, 0             ; Initialize poison array index
+   719                                      
+   720 000006CF 803E[3D02]01                cmp byte [flag], 1    ; Check if poison exists
+   721 000006D4 751A                        jne noCheckForPoison  ; If no poison, skip checking for poison
+   722                                      
+   723                                  p:
+   724 000006D6 3B87[F001]                  cmp ax, [array + bx]  ; Compare new head location with poison locations
+   725 000006DA 750E                        jne next2             ; If no match, continue checking the next poison
+   726                                      
+   727 000006DC C606[3D02]00                mov byte [flag], 0    ; Poison removed
+   728 000006E1 B80700                      mov ax, 0x7
+   729 000006E4 E83CFF                      call clrPoison        ; Clear poison from screen
+   730 000006E7 E93500                      jmp borderTouched     ; Jump to borderTouched (handle collision or reset)
+   731                                      
+   732                                  next2:
+   733 000006EA 81C30200                    add bx, 2             ; Move to the next poison location
+   734 000006EE E2E6                        loop p                ; Continue looping through all poison locations
+   735                                      
+   736                                  	
+   737                                  noCheckForPoison:
+   738 000006F0 A3[0300]                    mov [snake], ax          ; Update snake's head location
+   739 000006F3 89C6                        mov si, ax               ; Store head location in si
+   740 000006F5 8B1E[EA01]                  mov bx, [fruit]          ; Load fruit location into bx
+   741 000006F9 39DE                        cmp si, bx               ; Check if head is at the same location as fruit
+   742 000006FB 7553                        jne popAll               ; If not, jump to popAll
+   743                                      
+   744 000006FD E85800                      call increaseSize        ; If yes, increase snake size
+   745 00000700 E8A101                      call fruitGen            ; Generate a new fruit
+   746 00000703 8006[3802]04                add byte [score], 4      ; Add 4 points to the score
+   747 00000708 A0[3802]                    mov al, [score]          ; Load score into al
+   748 0000070B B210                        mov dl, 16               ; Set divisor for score display
+   749 0000070D B400                        mov ah, 0                ; Clear high byte of ax
+   750 0000070F F6F2                        div dl                   ; Divide score by 16 to separate tens and ones
+   751 00000711 80FC00                      cmp ah, 0                ; Check if the quotient is zero
+   752 00000714 7503                        jne noPoison             ; If not zero, skip poison display
+   753 00000716 E832FB                      call displayPoison       ; Display poison if score is divisible by 16
+   754                                      
+   755                                  noPoison:
+   756 00000719 E833FE                      call displayScore        ; Display the updated score
+   757 0000071C E93100                      jmp popAll               ; Jump to popAll (finish the subroutine)
+   758                                      
+   759                                  borderTouched:
+   760 0000071F E8A0FE                      call sound               ; Play sound effect
+   761 00000722 FE0E[0302]                  dec byte [livesRemaining] ; Decrease the number of lives
+   762 00000726 BB[0300]                    mov bx, snake            ; Load snake's current position
+   763 00000729 8B0E[FA01]                  mov cx, [size]           ; Load the size of the snake
+   764                                  
+   765                                  remove:
+   766 0000072D B80700                      mov ax, 0x7              ; Set text attribute for printing
+   767 00000730 50                          push ax
+   768 00000731 FF37                        push word[bx]            ; Push snake body segment location onto stack
+   769 00000733 81C30200                    add bx, 2                ; Move to the next snake body segment
+   770 00000737 BA[E401]                    mov dx, space            ; Load space character into dx
+   771 0000073A 52                          push dx
+   772 0000073B E83F01                      call print               ; Call print to remove the character
+   773 0000073E E2ED                        loop remove              ; Continue for all remaining body parts
+   774                                  
+   775 00000740 E8AFFE                      call initialize          ; Reinitialize snake
+   776 00000743 E8F0FD                      call displayLives        ; Display updated lives
+   777                                  
+   778 00000746 803E[0302]00                cmp byte [livesRemaining], 0 ; Check if there are no remaining lives
+   779 0000074B 7503                        jne popAll               ; If lives remain, jump to popAll
+   780 0000074D E889FC                      call quit                ; If no lives, quit the game
+   781                                  
+   782                                  popAll:
+   783 00000750 5B                          pop bx                   ; Pop saved registers
+   784 00000751 58                          pop ax
+   785 00000752 59                          pop cx
+   786 00000753 5E                          pop si
+   787 00000754 5D                          pop bp
+   788 00000755 C20200                      ret 2                    ; Return to caller with 2 bytes popped off the stack
+   789                                  
+   790                                  increaseSize:
+   791 00000758 50                          push ax
+   792 00000759 53                          push bx
+   793 0000075A 51                          push cx
+   794 0000075B B90400                      mov cx, 4               ; Number of snake body segments to check
+   795 0000075E BA0200                      mov dx, 2               ; Set dx to 2 for shifting logic
+   796                                      
+   797                                  shifting:
+   798 00000761 8A26[0400]                  mov ah, [snake + 1]     ; Load row number of the current snake segment
+   799 00000765 A0[0300]                    mov al, [snake]         ; Load column number of the current snake segment
+   800 00000768 3A26[0600]                  cmp ah, [snake + 2 + 1] ; Compare current row with next segment's row
+   801 0000076C 750D                        jne vertical            ; If rows are different, jump to vertical logic
+   802                                      
+   803 0000076E 3A06[0500]                  cmp al, [snake + 2]     ; Compare current column with next segment's column
+   804 00000772 7C02                        jl decreasingCol        ; If column is less, jump to decreasing column logic
+   805                                      
+   806 00000774 FEC0                        inc al                  ; Otherwise, increment column number (grow snake)
+   807                                  	
+   808                                  decreasingCol:
+   809 00000776 FEC8                        dec al                 ; Decrement the column number if it's decreasing
+   810 00000778 E90D00                      jmp save               ; Jump to save logic
+   811                                  
+   812                                  vertical:
+   813 0000077B 3A26[0500]                  cmp ah, [snake + 2]     ; Compare row of current segment with next
+   814 0000077F 7C05                        jl decreasingRow        ; If the current row is less, jump to decreasing row logic
+   815 00000781 FEC4                        inc ah                  ; Otherwise, increment the row number
+   816 00000783 E90200                      jmp save                ; Jump to save logic
+   817                                  
+   818                                  decreasingRow:
+   819 00000786 FECC                        dec ah                  ; Decrement the row number if it's decreasing
+   820                                  
+   821                                  save:
+   822 00000788 50                          push ax                 ; Save the new character's location (column/row)
+   823 00000789 8B16[FA01]                  mov dx, [size]          ; Load the size of the snake
+   824 0000078D D1E2                        shl dx, 1               ; Multiply the size by 2 (for row/column pair)
+   825 0000078F BE0000                      mov si, 0               ; Set si to 0 to start checking from the beginning of the snake
+   826                                  
+   827                                  check:
+   828 00000792 3B84[0300]                  cmp ax, [snake + si]    ; Compare current position with the snake's body
+   829 00000796 7507                        jne noTouch             ; If no match, jump to noTouch
+   830 00000798 E8BAFE                      call temp               ; If a match is found, call temp (snake touches itself)
+   831 0000079B 58                          pop ax                  ; Pop ax after temp returns
+   832 0000079C E94C00                      jmp pop30               ; Jump to pop30 to clean up
+   833                                  	
+   834                                  noTouch:
+   835 0000079F 81C60200                    add si, 2              ; Move to the next snake segment
+   836 000007A3 39D6                        cmp si, dx             ; Compare with the size of the snake
+   837 000007A5 75EB                        jnz check              ; If not done, repeat the check
+   838                                  
+   839 000007A7 8B1E[FA01]                  mov bx, [size]         ; Load the current size of the snake
+   840 000007AB D1E3                        shl bx, 1              ; Multiply the size by 2 (for row/column pair)
+   841 000007AD 81EB0200                    sub bx, 2              ; Adjust for the last segment
+   842                                  
+   843                                  l7:
+   844 000007B1 8B87[0300]                  mov ax, [snake + bx]   ; Load the snake segment's position
+   845 000007B5 8987[0500]                  mov [snake + bx + 2], ax ; Shift the segment forward
+   846 000007B9 81EB0200                    sub bx, 2              ; Move to the previous segment
+   847 000007BD 81FB0000                    cmp bx, 0              ; Check if we have reached the head
+   848 000007C1 7DEE                        jge l7                 ; If not, keep shifting segments
+   849                                  
+   850 000007C3 58                          pop ax
+   851 000007C4 A3[0300]                    mov [snake], ax        ; Set the new head of the snake
+   852 000007C7 FF06[FA01]                  inc word[size]         ; Increment the snake size
+   853 000007CB BAF000                      mov dx, 240            ; Load the winning size constant
+   854 000007CE 3916[FA01]                  cmp word[size], dx     ; Check if the snake reached the winning size
+   855 000007D2 7503                        jne nvm                ; If not, jump to nvm
+   856                                  
+   857 000007D4 E8C8FB                      call victory           ; Call the victory function when snake reaches the goal
+   858                                  	
+   859                                  nvm:
+   860 000007D7 E8A1FD                      call printSnake        ; Call the function to print the snake
+   861 000007DA E285                        loop shifting          ; Loop through the shifting process (likely moving the snake or similar)
+   862                                      
+   863 000007DC B80700                      mov ax, 0x7            ; Set attribute for normal color
+   864 000007DF 50                          push ax
+   865 000007E0 FF36[EA01]                  push word[fruit]       ; Push the current fruit location to the stack
+   866                                  
+   867 000007E4 BB[E401]                    mov bx, space          ; Set the space character for clearing
+   868 000007E7 53                          push bx
+   869 000007E8 E89200                      call print             ; Call the print function to print the space (clear the fruit's previous location)
+   870                                  
+   871                                  pop30:
+   872 000007EB 59                          pop cx                 ; Restore cx from the stack
+   873 000007EC 5B                          pop bx                 ; Restore bx from the stack
+   874 000007ED 58                          pop ax                 ; Restore ax from the stack
+   875 000007EE C3                          ret                    ; Return from the function
+   876                                  
+   877                                  
+   878                                  kbisr:
+   879 000007EF 50                          push ax
+   880 000007F0 E460                        in al, 0x60             ; Read the keyboard input
+   881 000007F2 3C4B                        cmp al, 75              ; Check if the key is left arrow (0x4B)
+   882 000007F4 751E                        jne notA
+   883 000007F6 803E[E601]01                cmp byte[left], 1       ; If left movement already enabled, skip
+   884 000007FB 747A                        je end
+   885 000007FD C606[E601]01                mov byte[left], 1       ; Set left movement flag
+   886 00000802 C606[E701]00                mov byte[right], 0      ; Disable right movement
+   887 00000807 C606[E801]00                mov byte[up], 0         ; Disable up movement
+   888 0000080C C606[E901]00                mov byte[down], 0       ; Disable down movement
+   889 00000811 E96300                      jmp end
+   890                                  
+   891                                  notA:
+   892 00000814 3C4D                        cmp al, 77              ; Check if the key is right arrow (0x4D)
+   893 00000816 751E                        jne notAD
+   894 00000818 803E[E701]01                cmp byte[right], 1      ; If right movement already enabled, skip
+   895 0000081D 7458                        je end
+   896 0000081F C606[E701]01                mov byte[right], 1      ; Set right movement flag
+   897 00000824 C606[E601]00                mov byte[left], 0       ; Disable left movement
+   898 00000829 C606[E801]00                mov byte[up], 0         ; Disable up movement
+   899 0000082E C606[E901]00                mov byte[down], 0       ; Disable down movement
+   900 00000833 E94100                      jmp end
+   901                                  
+   902                                  notAD:
+   903 00000836 3C48                        cmp al, 72              ; Check if the key is up arrow (0x48)
+   904 00000838 751E                        jne d
+   905 0000083A 803E[E801]01                cmp byte[up], 1         ; If up movement already enabled, skip
+   906 0000083F 7436                        je end
+   907 00000841 C606[E801]01                mov byte[up], 1         ; Set up movement flag
+   908 00000846 C606[E601]00                mov byte[left], 0       ; Disable left movement
+   909 0000084B C606[E701]00                mov byte[right], 0      ; Disable right movement
+   910 00000850 C606[E901]00                mov byte[down], 0       ; Disable down movement
+   911 00000855 E91F00                      jmp end
+   912                                  
+   913                                  d:
+   914 00000858 3C50                        cmp al, 80              ; Check if the key is down arrow (0x50)
+   915 0000085A 751B                        jne end
+   916 0000085C 803E[E901]01                cmp byte[down], 1       ; If down movement already enabled, skip
+   917 00000861 7414                        je end
+   918 00000863 C606[E901]01                mov byte[down], 1       ; Set down movement flag
+   919 00000868 C606[E601]00                mov byte[left], 0       ; Disable left movement
+   920 0000086D C606[E701]00                mov byte[right], 0      ; Disable right movement
+   921 00000872 C606[E801]00                mov byte[up], 0         ; Disable up movement
+   922                                  
+   923                                  end:
+   924 00000877 58                          pop ax
+   925 00000878 2EFF2E[FF01]                jmp far [cs:oldkbisr]   ; Jump to the previous ISR
+   926                                  
+   927                                  
+   928 0000087D 55                      print:	push bp
+   929 0000087E 89E5                    	mov bp,sp
+   930 00000880 53                      	push bx
+   931 00000881 51                      	push cx
+   932 00000882 52                      	push dx
+   933 00000883 06                      	push es
+   934 00000884 50                      	push ax
+   935 00000885 B413                    	mov ah, 0x13 ; service 13 - print string
+   936 00000887 B001                    	mov al, 1 ; subservice 01  update cursor
+   937 00000889 B700                    	mov bh, 0 ; output on page 0
+   938 0000088B 8A5E08                  	mov bl, [bp+8] ; normal attrib
+   939 0000088E 8B5606                  	mov dx,[bp+6]; row 10 column 3
+   940 00000891 B90100                  	mov cx, 1 ; length of string
+   941 00000894 0E                      	push cs
+   942 00000895 07                      	pop es ; segment of string
+   943 00000896 8B6E04                  	mov bp, [bp+4]; offset of string
+   944 00000899 CD10                    	int 0x10 ; call BIOS video service
+   945 0000089B 58                      	pop ax
+   946 0000089C 07                      	pop es
+   947 0000089D 5A                      	pop dx
+   948 0000089E 59                      	pop cx
+   949 0000089F 5B                      	pop bx
+   950 000008A0 5D                      	pop bp
+   951 000008A1 C20600                  	ret 6
+   952                                  	
+   953                                  fruitGen:
+   954 000008A4 55                          push bp
+   955 000008A5 89E5                        mov bp, sp
+   956 000008A7 50                          push ax
+   957 000008A8 53                          push bx
+   958 000008A9 51                          push cx
+   959 000008AA 52                          push dx
+   960 000008AB 56                          push si
+   961 000008AC 57                          push di
+   962                                  
+   963                                      ; Get current size of the snake (in bytes)
+   964 000008AD 8B0E[FA01]                  mov cx, [size]          ; Load snake size (number of body parts)
+   965 000008B1 D1E1                        shl cx, 1               ; Multiply by 2 (because each coordinate is 2 bytes)
+   966                                  
+   967                                      ; Initialize random generator values
+   968 000008B3 B008                        mov al, 8               ; Start with a fixed random seed (for example, 8)
+   969 000008B5 B408                        mov ah, 8               ; Set another part of random seed to 8
+   970 000008B7 C606[FD01]08                mov byte [random], 8    ; Initialize the random byte
+   971                                  
+   972                                  reset:
+   973 000008BC 8006[FD01]02                add byte [random], 2    ; Increment random value slightly to change it each time
+   974                                  
+   975                                  again:
+   976 000008C1 8A16[FD01]                  mov dl, [random]        ; Load current random byte value into DL
+   977                                  
+   978                                      ; Check if random value is out of bounds for column (0-78) or row (0-22)
+   979 000008C5 80FA4F                      cmp dl, 79              ; If random value exceeds 78 (max column), reset it
+   980 000008C8 7716                        ja init                 ; Jump to init if above 78
+   981 000008CA 80FA00                      cmp dl, 0               ; If random value is 0 (invalid), reset it
+   982 000008CD 7411                        je init                 ; Jump to init if equal to 0
+   983                                  
+   984                                      ; Check for valid row range (0-23)
+   985 000008CF 8A26[FD01]                  mov ah, [random]        ; Load the next part of random value (row part)
+   986 000008D3 80EC02                      sub ah, 2               ; Adjust it for row position
+   987 000008D6 80FC17                      cmp ah, 23              ; Check if row value exceeds 22 (max row)
+   988 000008D9 7705                        ja init                 ; Jump to init if greater than 22
+   989 000008DB 80FC00                      cmp ah, 0               ; Check if row value is 0
+   990 000008DE 7400                        je init                 ; Jump to init if equal to 0
+   991                                  
+   992                                  init:
+   993 000008E0 C606[FD01]08                mov byte [random], 8    ; Reset random value to 8 (or another seed)
+   994 000008E5 EBDA                        jmp again               ; Retry generating valid coordinates
+   995                                  	
+   996                                  	
+   997                                  l5:
+   998 000008E7 3B87[0300]                  cmp ax, [snake+bx]  ; Compare the current snake's head (AX) with each part of the snake's body.
+   999 000008EB 74D4                        je again             ; If there's a match (i.e., the head has collided with the body), jump to `again` to generate new coordinates.
+  1000 000008ED 81C30200                    add bx, 2            ; Move to the next body part (each body part is 2 bytes).
+  1001 000008F1 39CB                        cmp bx, cx           ; Check if we've iterated over all parts of the snake.
+  1002 000008F3 75F2                        jne l5               ; If we haven't reached the end of the snake, repeat the check.
+  1003                                  
+  1004 000008F5 BA0400                      mov dx, 0x4            ; Set the attribute for the fruit (this may be a specific color or display setting).
+  1005 000008F8 52                          push dx
+  1006 000008F9 50                          push ax
+  1007 000008FA A3[EA01]                    mov [fruit], ax         ; Store the valid fruit position (from AX) into the `fruit` variable.
+  1008 000008FD BB[EC01]                    mov bx, food
+  1009 00000900 813E[F801]0300              cmp word[foodindex], 3  ; Check the current food index (to track how many food items are displayed).
+  1010 00000906 7C06                        jl goAhead
+  1011 00000908 C706[F801]0000              mov word[foodindex], 0  ; Reset the food index to 0 when it exceeds 3.
+  1012                                  
+  1013                                  goAhead:
+  1014 0000090E 031E[F801]                  add bx, [foodindex]    ; Add the current `foodindex` value to `bx` for the next fruit's display position.
+  1015 00000912 FF06[F801]                  inc word[foodindex]    ; Increment the `foodindex` for the next time.
+  1016 00000916 53                          push bx
+  1017 00000917 E863FF                      call print             ; Call the `print` function to display the fruit.
+  1018                                  
+  1019 0000091A 5F                          pop di
+  1020 0000091B 5E                          pop si
+  1021 0000091C 5A                          pop dx
+  1022 0000091D 59                          pop cx
+  1023 0000091E 5B                          pop bx
+  1024 0000091F 58                          pop ax
+  1025 00000920 5D                          pop bp
+  1026 00000921 C3                          ret
+  1027                                  
+  1028                                  clrscr:
+  1029 00000922 52                          push dx
+  1030 00000923 51                          push cx
+  1031 00000924 53                          push bx
+  1032 00000925 50                          push ax
+  1033                                      
+  1034 00000926 B9D007                      mov cx, 2000         ; Number of characters on screen (80x25)
+  1035 00000929 BA0700                      mov dx, 0x7          ; Normal color attribute (light gray text on black background)
+  1036 0000092C B000                        mov al, 0            ; Space (blank character)
+  1037 0000092E B400                        mov ah, 0            ; Normal video attribute
+  1038                                  	
+  1039                                  clearLoop:
+  1040                                  
+  1041 00000930 B800B8                      mov ax, 0xb800       ; Segment for video memory (color text mode)
+  1042 00000933 8EC0                    	mov es, ax
+  1043 00000935 BF0000                      mov di, 0            ; Starting offset
+  1044 00000938 268905                      mov word [es:di], ax ; Write the blank space with normal attribute
+  1045 0000093B 81C70200                    add di, 2            ; Move to the next character (each character is 2 bytes)
+  1046 0000093F E2EF                        loop clearLoop       ; Loop until 2000 characters are cleared
+  1047                                      
+  1048 00000941 58                          pop ax
+  1049 00000942 5B                          pop bx
+  1050 00000943 59                          pop cx
+  1051 00000944 5A                          pop dx
+  1052 00000945 C3                          ret
+  1053                                  	
+  1054                                  l1:
+  1055 00000946 52                      	push dx
+  1056 00000947 50                      	push ax
+  1057                                  	
+  1058 00000948 BB[E401]                	mov bx, space       ; Load the space character into bx
+  1059 0000094B 53                      	push bx              ; Push space onto the stack
+  1060 0000094C E82EFF                  	call print           ; Call print function to print a space
+  1061 0000094F 3C4F                    	cmp al, 79           ; Compare al with 79 (the rightmost column, assuming 80 columns)
+  1062 00000951 7405                    	je clear             ; If al = 79, jump to 'clear'
+  1063 00000953 FEC0                    	inc al               ; Increment al (move to the next column)
+  1064 00000955 E90400                  	jmp next             ; Jump to the 'next' label
+  1065                                  clear:
+  1066 00000958 B000                    	mov al, 0            ; Reset al to 0 (starting from the leftmost column)
+  1067 0000095A FEC4                    	inc ah               ; Increment ah to move to the next row
+  1068                                  
+  1069                                  next:
+  1070 0000095C E2E8                    	loop l1              ; Loop until cx reaches 0
+  1071 0000095E 58                      	pop ax
+  1072 0000095F 5B                      	pop bx
+  1073 00000960 59                      	pop cx
+  1074 00000961 5A                      	pop dx
+  1075                                  
+  1076                                  printing:
+  1077 00000962 50                          push ax
+  1078 00000963 2E803E[E701]00              cmp byte [cs:right], 0
+  1079 00000969 741D                        je checkleft
+  1080 0000096B 2EA0[0300]                  mov al, [cs:snake]
+  1081 0000096F 3C4F                        cmp al, 79
+  1082 00000971 747E                        je exit
+  1083 00000973 FEC0                        inc al
+  1084 00000975 2EA2[0300]                  mov [cs:snake], al
+  1085 00000979 2E8A26[0400]                mov ah, [cs:snake + 1]
+  1086 0000097E 50                          push ax
+  1087 0000097F E813FD                      call coordinates
+  1088 00000982 E8F6FB                      call printSnake
+  1089 00000985 E96900                      jmp exit
+  1090                                  	
+  1091                                  checkleft:
+  1092 00000988 2E803E[E601]00              cmp byte [cs:left], 0
+  1093 0000098E 741D                        je checkUp
+  1094 00000990 2EA0[0300]                  mov al, [cs:snake]
+  1095 00000994 3C00                        cmp al, 0
+  1096 00000996 7459                        je exit
+  1097 00000998 FEC8                        dec al
+  1098 0000099A 2EA2[0300]                  mov [cs:snake], al
+  1099 0000099E 2E8A26[0400]                mov ah, [cs:snake + 1]
+  1100 000009A3 50                          push ax
+  1101 000009A4 E8EEFC                      call coordinates
+  1102 000009A7 E8D1FB                      call printSnake
+  1103 000009AA E94400                      jmp exit
+  1104                                  
+  1105                                  checkUp:
+  1106 000009AD 2E803E[E801]00              cmp byte [cs:up], 0
+  1107 000009B3 741A                        je checkDown
+  1108 000009B5 2E8A26[0400]                mov ah, [cs:snake + 1]
+  1109 000009BA 80FC00                      cmp ah, 0
+  1110 000009BD 7432                        je exit
+  1111 000009BF FECC                        dec ah
+  1112 000009C1 2EA0[0300]                  mov al, [cs:snake]
+  1113 000009C5 50                          push ax
+  1114 000009C6 E8CCFC                      call coordinates
+  1115 000009C9 E8AFFB                      call printSnake
+  1116 000009CC E92200                      jmp exit
+  1117                                  
+  1118                                  checkDown:
+  1119 000009CF 2E803E[E901]00              cmp byte [cs:down], 0
+  1120 000009D5 741A                        je exit
+  1121 000009D7 2E8A26[0400]                mov ah, [cs:snake + 1]
+  1122 000009DC 80FC17                      cmp ah, 23
+  1123 000009DF 7410                        je exit
+  1124 000009E1 FEC4                        inc ah
+  1125 000009E3 2EA0[0300]                  mov al, [cs:snake]
+  1126 000009E7 50                          push ax
+  1127 000009E8 E8AAFC                      call coordinates
+  1128 000009EB E88DFB                      call printSnake
+  1129 000009EE E90000                      jmp exit
+  1130                                  
+  1131                                  exit:
+  1132 000009F1 58                          pop ax
+  1133 000009F2 C3                          ret
+  1134                                  
+  1135                                  
+  1136                                  start:
+  1137 000009F3 E82CFF                      call clrscr
+  1138 000009F6 B90B00                      mov cx, 11
+  1139 000009F9 B800B8                      mov ax, 0xb800
+  1140 000009FC 8EC0                        mov es, ax
+  1141 000009FE B405                        mov ah, 0x5
+  1142 00000A00 BB[3E02]                    mov bx, welcome
+  1143 00000A03 BF2407                      mov di, 1828
+  1144                                  	
+  1145                                  org 0x0100
+  1146                                  
+  1147                                  l90:
+  1148 00000A06 8A07                        mov al, [bx]          ; Load byte from string to al
+  1149 00000A08 81C30100                    add bx, 1             ; Increment bx (move to next byte of the string)
+  1150 00000A0C 268905                      mov word [es:di], ax  ; Store ax to the video memory at es:di
+  1151 00000A0F 81C70200                    add di, 2             ; Move to the next character (each character is 2 bytes)
+  1152 00000A13 E2F1                        loop l90              ; Repeat for the length of the string
+  1153                                  
+  1154 00000A15 B400                        mov ah, 0
+  1155 00000A17 CD16                        int 0x16              ; Wait for a key press (BIOS keyboard interrupt)
+  1156                                  
+  1157 00000A19 E806FF                      call clrscr           ; Clear the screen
+  1158 00000A1C E88EFA                      call border           ; Call the border function (presumably to set up a border)
+  1159                                  
+  1160 00000A1F 31C0                        xor ax, ax
+  1161 00000A21 8EC0                        mov es, ax            ; Set ES to 0 (pointing to IVT base)
+  1162 00000A23 26A12400                    mov ax, [es:9*4]      ; Load the old interrupt vector for keyboard ISR
+  1163 00000A27 A3[FF01]                    mov [oldkbisr], ax
+  1164 00000A2A 26A12600                    mov ax, [es:9*4+2]
+  1165 00000A2E A3[0102]                    mov [oldkbisr+2], ax
+  1166                                  
+  1167 00000A31 FA                          cli                   ; Clear interrupt flag (disable interrupts)
+  1168 00000A32 26C7062400[EF07]            mov word [es:9*4], kbisr ; Set new ISR for keyboard
+  1169 00000A39 268C0E2600                  mov word [es:9*4+2], cs  ; Set CS to the current segment
+  1170 00000A3E FB                          sti                   ; Set interrupt flag (enable interrupts)
+  1171                                  
+  1172 00000A3F 2EC606[1C02]03              mov byte [cs:MinsRemaining], 3 ; Set initial remaining minutes to 3
+  1173 00000A45 31C0                        xor ax, ax
+  1174 00000A47 8EC0                        mov es, ax            ; Point ES to IVT base (interrupt vector table)
+  1175 00000A49 FA                          cli                   ; Disable interrupts
+  1176 00000A4A 26C7062000[5304]            mov word [es:8*4], timer  ; Store the timer offset in the IVT
+  1177 00000A51 268C0E2200                  mov [es:8*4+2], cs    ; Store current code segment at IVT
+  1178 00000A56 FB                          sti                   ; Enable interrupts
+  1179                                  
+  1180 00000A57 E898FB                      call initialize       ; Initialize the game
+  1181 00000A5A E831F8                      call setPoison        ; Set up poison in the game
+  1182 00000A5D E81BFB                      call printSnake       ; Print the initial snake state
+  1183 00000A60 E841FE                      call fruitGen         ; Generate fruit for the game
+  1184                                  
+  1185                                  delay:
+  1186 00000A63 EBFE                        jmp delay             ; Infinite loop (delays execution)
