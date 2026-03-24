@@ -130,9 +130,9 @@ Or copy `snake.com` into your DOSBox mounted directory and run it from the DOSBo
 
 ---
 
-## 📸 Screenshot
+## Display
 
-![Snake Game Screenshot](project/overview.png)
+![Snake Game Display](project/overview.png)
 
 ---
 
