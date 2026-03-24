@@ -9,8 +9,7 @@
 This project is a classic Snake game implemented entirely in **x86 Assembly language** (NASM/YASM-compatible Intel syntax). It targets the **DOS real-mode environment** and interfaces directly with VGA video memory, BIOS interrupts, and DOS system calls — making it a ground-up demonstration of low-level systems programming.
 
 Originally developed as a university group project by:
-- **Shahzeb Imran** — 23L-2506
-- **Taha Nawaz** — 23L-2644
+- **Ali Ahmad** — 23L-2619
 
 ---
 
